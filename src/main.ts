@@ -5,7 +5,7 @@
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
 import * as utils from '@iobroker/adapter-core';
-import axios, { AxiosError, AxiosResponse } from "axios";
+import axios, { AxiosError, AxiosResponse } from 'axios';
 
 // Augment the adapter.config object with the actual types
 // TODO: delete this in the next version
@@ -24,8 +24,8 @@ class Sunnyportal extends utils.Adapter {
     readonly url = 'https://sunnyportal.com';
     private timer: any = 0;
 
-    private email: string = '';
-    private password: string = '';
+    private email = '';
+    private password = '';
 
     public constructor(options: Partial<ioBroker.AdapterOptions> = {}) {
         super({
@@ -53,27 +53,26 @@ class Sunnyportal extends utils.Adapter {
      * Is called when adapter shuts down - callback has to be called under any circumstances!
      */
     private onUnload(callback: () => void): void {
-        callback.bind(this);
         try {
             this.log.info('cleaned everything up...');
-            callback();
+            callback.bind(this)();
         } catch (e) {
-            callback();
+            callback.bind(this)();
         }
     }
 
     private login(callback: () => void) {
-        callback.bind(this);
-        var LOGIN_URL = '/Templates/Start.aspx';
+        const LOGIN_URL = '/Templates/Start.aspx';
 
-        var requestOpts = {
+        const requestOpts = {
             headers: {
-                'SunnyPortalPageCounter': 0,
-                'Origin': this.url,
-                'Referer': ' https://www.sunnyportal.com/Templates/Start.aspx',
-                "DNT": 1,
-                'Content-Type': "application/x-www-form-urlencoded",
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'
+                SunnyPortalPageCounter: 0,
+                Origin: this.url,
+                Referer: ' https://www.sunnyportal.com/Templates/Start.aspx',
+                DNT: 1,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent':
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
             },
             form: {
                 __EVENTTARGET: '',
@@ -96,9 +95,9 @@ class Sunnyportal extends utils.Adapter {
         const api = axios.create(requestOpts);
 
         api.post(this.url + LOGIN_URL, requestOpts)
-            .then((response: AxiosResponse<any>) => {
-                this.log.info("login succeeded")
-                callback();
+            .then(() => {
+                this.log.info('login succeeded');
+                callback.bind(this)();
                 return;
             })
             .catch((error: AxiosError) => {
@@ -109,17 +108,18 @@ class Sunnyportal extends utils.Adapter {
     }
 
     private fetchData() {
-        this.log.info("fetching data...");
+        this.log.info('fetching data...');
         const HOMEMANAGER_URL = '/homemanager';
         const requestOpts = {
             headers: {
-                'Referer': 'https://www.sunnyportal.com/FixedPages/HoManLive.aspx',
-                "DNT": 1,
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
-                'X-Requested-With': 'XMLHttpRequest'
+                Referer: 'https://www.sunnyportal.com/FixedPages/HoManLive.aspx',
+                DNT: 1,
+                'User-Agent':
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+                'X-Requested-With': 'XMLHttpRequest',
             },
             // Service does not have a valid cert
-            strictSSL: false
+            strictSSL: false,
         };
 
         const d = new Date();
@@ -144,9 +144,11 @@ class Sunnyportal extends utils.Adapter {
 
         api.get(this.url + HOMEMANAGER_URL + '?t=' + n)
             .then((response: AxiosResponse<any>) => {
-                this.log.info("data fetched...");
+                this.log.info('data fetched...');
+                this.log.info(JSON.parse(response.data));
+                let obj;
                 try {
-                    var obj = JSON.parse(response.data);
+                    obj = JSON.parse(response.data);
                 } catch (error) {
                     this.log.error('error in JSON!');
                     this.reset();
@@ -155,13 +157,13 @@ class Sunnyportal extends utils.Adapter {
 
                 this.log.debug(JSON.stringify(obj));
 
-                for (let key of Object.keys(obj)) {
-                    let data = obj[key];
+                for (const key of Object.keys(obj)) {
+                    const data = obj[key];
                     if (wantedData.includes(key)) {
                         this.setAttribute(key, data);
                     }
                 }
-                this.setAttribute('Timestampt', obj['Timestamp']['DateTime'], "string");
+                this.setAttribute('Timestampt', obj['Timestamp']['DateTime'], 'string');
 
                 if (this.timer == 0) {
                     this.timer = setInterval(this.fetchData, 15 * 1000);
@@ -174,7 +176,7 @@ class Sunnyportal extends utils.Adapter {
             });
     }
 
-    private async setAttribute(name: string, value: any, type: string = 'number') {
+    private async setAttribute(name: string, value: any, type = 'number'): Promise<void> {
         await this.setObjectNotExistsAsync(name, {
             type: 'state',
             common: {
@@ -184,18 +186,18 @@ class Sunnyportal extends utils.Adapter {
                 read: true,
                 write: false,
             },
-            native: {}
+            native: {},
         });
 
         await this.setStateAsync(name, { val: value, ack: true });
     }
 
-    private reset() {
+    private reset(): void {
         if (this.timer != 0) {
             clearInterval(this.timer);
             this.timer = 0;
         }
-        setTimeout(setup, 5 * 1000);
+        setTimeout(this.login, 5 * 1000);
     }
 }
 
@@ -206,3 +208,4 @@ if (module.parent) {
     // otherwise start the instance directly
     (() => new Sunnyportal())();
 }
+
