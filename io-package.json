@@ -1,0 +1,51 @@
+{
+    "common": {
+        "name": "sunnyportal",
+        "version": "0.0.1",
+        "news": {
+            "0.0.1": {
+                "en": "initial release",
+                "de": "Erstveröffentlichung"
+            }
+        },
+        "title": "Sunny Portal",
+        "titleLang": {
+            "en": "Sunny Portal",
+            "de": "Sunny Portal"
+        },
+        "desc": {
+            "en": "Fetch data from Sunny Poral",
+            "de": "Fetch data from Sunny Poral"
+        },
+        "authors": [
+            "Marvin Caspar <info@caspar.dev>"
+        ],
+        "keywords": [
+            "iobroker",
+            "smarthome",
+            "energy",
+            "sunnyportal"
+        ],
+        "license": "MIT",
+        "platform": "Javascript/Node.js",
+        "main": "build/main.js",
+        "icon": "sunnyportal.png",
+        "enabled": true,
+        "extIcon": "https://raw.githubusercontent.com/marvincaspar/ioBroker.sunnyportal/master/admin/sunnyportal.png",
+        "readme": "https://github.com/marvincaspar/ioBroker.sunnyportal/blob/master/README.md",
+        "loglevel": "info",
+        "mode": "daemon",
+        "type": "energy",
+        "compact": true,
+        "connectionType": "cloud",
+        "dataSource": "poll",
+        "materialize": true,
+        "dependencies": [
+            {
+                "js-controller": ">=1.4.2"
+            }
+        ]
+    },
+    "objects": [],
+    "instanceObjects": []
+}
