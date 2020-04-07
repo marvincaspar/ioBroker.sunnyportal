@@ -89,13 +89,15 @@ class Sunnyportal extends utils.Adapter {
                 request
                     .post(this.URL + this.LOGIN_URL + '?ReturnURl=%2f', requestOpts)
                     .then((response) => {
-                    // Hack to check for login. Should forward to dashboard.
-                    if (response.headers.location && response.headers.location == '/FixedPages/HoManLive.aspx') {
-                        this.log.info('SUCCESSFULLY LOGGED IN');
+                    // Hack to check for login. Should forward to next page.
+                    if (response.headers.location &&
+                        (response.headers.location == '/FixedPages/HoManLive.aspx' ||
+                            response.headers.location == '/FixedPages/Dashboard.aspx')) {
+                        this.log.info('Successfully logged in');
                         callback.bind(this)();
                     }
                     else {
-                        this.log.warn('Login Failed, no redirect to HoManLive page');
+                        this.log.warn('Login Failed, no redirect!');
                         this.reset.bind(this)();
                     }
                 })
@@ -142,7 +144,7 @@ class Sunnyportal extends utils.Adapter {
                 obj = JSON.parse(response.body);
             }
             catch (error) {
-                this.log.error('error in JSON!');
+                this.log.error('Error in JSON!');
                 this.reset.bind(this)();
                 return;
             }
