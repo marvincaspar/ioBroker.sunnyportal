@@ -47,5 +47,9 @@
         ]
     },
     "objects": [],
-    "instanceObjects": []
+    "instanceObjects": [],
+    "native": {
+        "sunnyPortalEmail": "",
+        "sunnyPortalPassword": ""
+    }
 }
