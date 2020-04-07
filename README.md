@@ -12,7 +12,7 @@
 
 ## sunnyportal adapter for ioBroker
 
-Fetch data from Sunny Poral
+Fetch data from Sunny Portal
 
 ## Developer manual
 This section is intended for the developer. It can be deleted later
@@ -83,6 +83,9 @@ For later updates, the above procedure is not necessary. Just do the following:
 1. Execute `iobroker upload sunnyportal` on the ioBroker host
 
 ## Changelog
+
+### 0.1.0
+* (Marvin Caspar) Login and fetch current data from sunny portal
 
 ### 0.0.1
 * (Marvin Caspar) initial release
