@@ -15,14 +15,27 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
 const utils = require("@iobroker/adapter-core");
-const axios_1 = require("axios");
+const request = require("request-promise-native");
 class Sunnyportal extends utils.Adapter {
     constructor(options = {}) {
         super(Object.assign(Object.assign({}, options), { name: 'sunnyportal' }));
-        this.url = 'https://sunnyportal.com';
-        this.timer = 0;
+        this.URL = 'https://sunnyportal.com';
+        this.LOGIN_URL = '/Templates/Start.aspx';
+        this.OPEN_INVERTER_URL = '/FixedPages/InverterSelection.aspx';
+        this.SET_FILE_DATE_URL = '/FixedPages/InverterSelection.aspx';
+        this.CURRENT_PRODUCTION_URL = '/Dashboard';
+        this.DOWNLOAD_RESULTS_URL = '/Templates/DownloadDiagram.aspx?down=diag';
         this.email = '';
         this.password = '';
+        this.plantOID = '';
+        this.viewState = '';
+        this.viewStateGenerator = '';
+        this.timer = null;
+        this.jar = request.jar();
+        this.defaultRequestOps = {
+            jar: this.jar,
+            resolveWithFullResponse: true,
+        };
         this.on('ready', this.onReady.bind(this));
         this.on('unload', this.onUnload.bind(this));
     }
@@ -35,7 +48,8 @@ class Sunnyportal extends utils.Adapter {
             this.email = this.config.sunnyPortalEmail;
             this.password = this.config.sunnyPortalPassword;
             this.log.info('starting...');
-            this.login(this.fetchData);
+            yield this.login(this.fetchData);
+            this.log.info('done...');
         });
     }
     /**
@@ -51,59 +65,52 @@ class Sunnyportal extends utils.Adapter {
         }
     }
     login(callback) {
-        const LOGIN_URL = '/Templates/Start.aspx';
-        const requestOpts = {
-            headers: {
-                SunnyPortalPageCounter: 0,
-                Origin: this.url,
-                Referer: ' https://www.sunnyportal.com/Templates/Start.aspx',
-                DNT: 1,
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
-            },
-            form: {
-                __EVENTTARGET: '',
-                __EVENTARGUMENT: '',
-                ctl00$ContentPlaceHolder1$Logincontrol1$LoginBtn: 'Anmelden',
-                ctl00$ContentPlaceHolder1$Logincontrol1$txtPassword: this.password,
-                ctl00$ContentPlaceHolder1$Logincontrol1$txtUserName: this.email,
-                ctl00$ContentPlaceHolder1$Logincontrol1$ServiceAccess: 'true',
-                ctl00$ContentPlaceHolder1$Logincontrol1$RedirectURL: '',
-                ctl00$ContentPlaceHolder1$Logincontrol1$RedirectPlant: '',
-                ctl00$ContentPlaceHolder1$Logincontrol1$RedirectPage: '',
-                ctl00$ContentPlaceHolder1$Logincontrol1$RedirectDevice: '',
-                ctl00$ContentPlaceHolder1$Logincontrol1$RedirectOther: '',
-                ctl00$ContentPlaceHolder1$Logincontrol1$PlantIdentifier: '',
-            },
-            // Service does not have a valid cert
-            strictSSL: false,
-        };
-        const api = axios_1.default.create(requestOpts);
-        api.post(this.url + LOGIN_URL, requestOpts)
-            .then(() => {
-            this.log.info('login succeeded');
-            callback.bind(this)();
-            return;
-        })
-            .catch((error) => {
-            this.log.error('login failed, retrying in 5 sec: ' + error);
-            setTimeout(this.login, 5 * 1000);
-            return;
+        return __awaiter(this, void 0, void 0, function* () {
+            this.log.info('starting login...');
+            try {
+                // Let's first fetch the VIEWSTATE & VIEWSTATEGENERATOR hidden parameter values
+                request.get(this.URL + this.LOGIN_URL, this.defaultRequestOps, (err, httpResponse, body) => {
+                    console.log('Cookie Value: ' + this.jar.getCookieString(this.URL));
+                    // Filter out both values for the VIEWSTATE & VIEWSTATEGENERATOR hidden parameter
+                    this.viewState = body.match(/<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="(.*)" \/>/)[1];
+                    this.viewStateGenerator = body.match(/<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="(.*)" \/>/)[1];
+                    console.log('Fetched VIEWSTATE value: ' + this.viewState);
+                    console.log('Fetched VIEWSTATEGENERATOR value: ' + this.viewStateGenerator);
+                    const requestOpts = Object.assign(Object.assign({}, this.defaultRequestOps), { headers: {
+                            // We need to simulate a Browser which the SunnyPortal accepts...here I am Using Firefox 71.0 (64-bit) for Windows
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:71.0) Gecko/20100101 Firefox/71.0',
+                        }, form: {
+                            __VIEWSTATE: this.viewState,
+                            __VIEWSTATEGENERATOR: this.viewStateGenerator,
+                            ctl00$ContentPlaceHolder1$Logincontrol1$txtUserName: this.email,
+                            ctl00$ContentPlaceHolder1$Logincontrol1$txtPassword: this.password,
+                            ctl00$ContentPlaceHolder1$Logincontrol1$LoginBtn: 'Login',
+                        } });
+                    // Now Let's login by Posting the data
+                    request.post(this.URL + this.LOGIN_URL + '?ReturnURl=%2f', requestOpts, (err, httpResponse, body) => {
+                        if (err) {
+                            console.error('login failed:', err);
+                            return;
+                        }
+                        // Hack to check for login. Should forward to dashboard.
+                        if (httpResponse.headers.location) { // && httpResponse.headers.location == '/FixedPages/Dashboard.aspx') {
+                            console.log('SUCCESSFULLY LOGGED IN');
+                            callback.bind(this)();
+                        }
+                        else {
+                            console.log('Login Failed, no redirect to Dashboard');
+                        }
+                    });
+                });
+            }
+            catch (error) {
+                this.log.error('login failed, retrying in 5 sec: ' + error);
+                setTimeout(this.login.bind(this), 5 * 1000);
+            }
         });
     }
     fetchData() {
-        this.log.info('fetching data...');
-        const HOMEMANAGER_URL = '/homemanager';
-        const requestOpts = {
-            headers: {
-                Referer: 'https://www.sunnyportal.com/FixedPages/HoManLive.aspx',
-                DNT: 1,
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            // Service does not have a valid cert
-            strictSSL: false,
-        };
+        console.log('Fetching data...');
         const d = new Date();
         const n = d.getTime();
         const wantedData = [
@@ -121,37 +128,30 @@ class Sunnyportal extends utils.Adapter {
             'BatteryOut',
             'BatteryChargeStatus',
         ];
-        const api = axios_1.default.create(requestOpts);
-        api.get(this.url + HOMEMANAGER_URL + '?t=' + n)
-            .then((response) => {
-            this.log.info('data fetched...');
-		    this.log.info(response.data);
-            this.log.info(JSON.parse(response.data));
+        request.get(this.URL + this.CURRENT_PRODUCTION_URL + '?_=' + n, this.defaultRequestOps, (err, httpResponse, body) => {
+            if (err) {
+                console.error('Could not get current production');
+            }
+            console.log(JSON.parse(body));
             let obj;
             try {
-                obj = JSON.parse(response.data);
+                obj = JSON.parse(body);
             }
             catch (error) {
                 this.log.error('error in JSON!');
-                this.reset();
+                this.reset.bind(this)();
                 return;
             }
-            this.log.debug(JSON.stringify(obj));
             for (const key of Object.keys(obj)) {
                 const data = obj[key];
                 if (wantedData.includes(key)) {
                     this.setAttribute(key, data);
                 }
             }
-            this.setAttribute('Timestampt', obj['Timestamp']['DateTime'], 'string');
-            if (this.timer == 0) {
-                this.timer = setInterval(this.fetchData, 15 * 1000);
+            this.setAttribute('Timestamp', obj['Timestamp']['DateTime'], 'string');
+            if (this.timer == null) {
+                this.timer = setInterval(this.fetchData.bind(this), 15 * 1000);
             }
-        })
-            .catch((error) => {
-            this.log.error('request failed:' + error);
-            this.reset();
-            return;
         });
     }
     setAttribute(name, value, type = 'number') {
@@ -171,11 +171,11 @@ class Sunnyportal extends utils.Adapter {
         });
     }
     reset() {
-        if (this.timer != 0) {
+        if (this.timer != null) {
             clearInterval(this.timer);
-            this.timer = 0;
+            this.timer = null;
         }
-        setTimeout(this.login, 5 * 1000);
+        setTimeout(this.login.bind(this), 5 * 1000);
     }
 }
 if (module.parent) {
