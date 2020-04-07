@@ -1,11 +1,19 @@
 {
     "common": {
         "name": "sunnyportal",
-        "version": "0.1.1",
+        "version": "0.1.2",
         "news": {
-            "0.0.1": {
-                "en": "initial release",
-                "de": "Erstveröffentlichung"
+            "0.1.2": {
+                "en": "Fix for ioBroker repository",
+                "de": "Anpassungen für das ioBroker Repository"
+            },
+            "0.1.1": {
+                "en": "Fix redirect after login",
+                "de": "Redirect Bug nach Login behoben"
+            },
+            "0.1.0": {
+                "en": "Fetch current data",
+                "de": "Laden der aktuellen Daten"
             }
         },
         "title": "Sunny Portal",
@@ -14,8 +22,8 @@
             "de": "Sunny Portal"
         },
         "desc": {
-            "en": "Fetch data from Sunny Poral",
-            "de": "Fetch data from Sunny Poral"
+            "en": "Fetch data from Sunny Portal",
+            "de": "Fetch data from Sunny Portal"
         },
         "authors": [
             "Marvin Caspar <info@caspar.dev>"

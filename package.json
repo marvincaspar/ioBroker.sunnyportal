@@ -1,6 +1,6 @@
 {
   "name": "iobroker.sunnyportal",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Fetch data from Sunny Portal",
   "author": {
     "name": "Marvin Caspar",
@@ -21,7 +21,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git@github.com:marvincaspar/ioBroker.sunnyportal.git"
+    "url": "https://github.com/marvincaspar/ioBroker.sunnyportal"
   },
   "dependencies": {
     "@iobroker/adapter-core": "^2.2.1",

@@ -22,6 +22,9 @@ Fetch the current data from Sunny Portal every minute.
 
 ## Changelog
 
+### 0.1.2
+* (Marvin Caspar) Fixes for ioBroker repository
+
 ### 0.1.1
 * (Marvin Caspar) Fix redirect after login
 * (Marvin Caspar) Cleanup readme

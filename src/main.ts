@@ -35,6 +35,7 @@ class Sunnyportal extends utils.Adapter {
     private viewStateGenerator = '';
 
     private timer: any = null;
+    private loginTimer: any = null;
 
     private jar = request.jar();
     private defaultRequestOps = {
@@ -69,6 +70,10 @@ class Sunnyportal extends utils.Adapter {
     private onUnload(callback: () => void): void {
         try {
             this.log.info('Cleaned everything up...');
+            clearInterval(this.timer);
+            this.timer = null;
+            clearTimeout(this.loginTimer);
+            this.loginTimer = null;
             callback.bind(this)();
         } catch (e) {
             callback.bind(this)();
@@ -210,7 +215,7 @@ class Sunnyportal extends utils.Adapter {
             clearInterval(this.timer);
             this.timer = null;
         }
-        setTimeout(this.login.bind(this), 5 * 1000);
+        this.loginTimer = setTimeout(this.login.bind(this), 5 * 1000);
     }
 }
 
