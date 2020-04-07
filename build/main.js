@@ -35,6 +35,7 @@ class Sunnyportal extends utils.Adapter {
         this.defaultRequestOps = {
             jar: this.jar,
             resolveWithFullResponse: true,
+            simple: false,
         };
         this.on('ready', this.onReady.bind(this));
         this.on('unload', this.onUnload.bind(this));
@@ -47,9 +48,7 @@ class Sunnyportal extends utils.Adapter {
             // Initialize your adapter here
             this.email = this.config.sunnyPortalEmail;
             this.password = this.config.sunnyPortalPassword;
-            this.log.info('starting...');
-            yield this.login(this.fetchData);
-            this.log.info('done...');
+            yield this.login(this.fetchLiveData);
         });
     }
     /**
@@ -57,7 +56,7 @@ class Sunnyportal extends utils.Adapter {
      */
     onUnload(callback) {
         try {
-            this.log.info('cleaned everything up...');
+            this.log.info('Cleaned everything up...');
             callback.bind(this)();
         }
         catch (e) {
@@ -66,51 +65,52 @@ class Sunnyportal extends utils.Adapter {
     }
     login(callback) {
         return __awaiter(this, void 0, void 0, function* () {
-            this.log.info('starting login...');
-            try {
-                // Let's first fetch the VIEWSTATE & VIEWSTATEGENERATOR hidden parameter values
-                request.get(this.URL + this.LOGIN_URL, this.defaultRequestOps, (err, httpResponse, body) => {
-                    console.log('Cookie Value: ' + this.jar.getCookieString(this.URL));
-                    // Filter out both values for the VIEWSTATE & VIEWSTATEGENERATOR hidden parameter
-                    this.viewState = body.match(/<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="(.*)" \/>/)[1];
-                    this.viewStateGenerator = body.match(/<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="(.*)" \/>/)[1];
-                    console.log('Fetched VIEWSTATE value: ' + this.viewState);
-                    console.log('Fetched VIEWSTATEGENERATOR value: ' + this.viewStateGenerator);
-                    const requestOpts = Object.assign(Object.assign({}, this.defaultRequestOps), { headers: {
-                            // We need to simulate a Browser which the SunnyPortal accepts...here I am Using Firefox 71.0 (64-bit) for Windows
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:71.0) Gecko/20100101 Firefox/71.0',
-                        }, form: {
-                            __VIEWSTATE: this.viewState,
-                            __VIEWSTATEGENERATOR: this.viewStateGenerator,
-                            ctl00$ContentPlaceHolder1$Logincontrol1$txtUserName: this.email,
-                            ctl00$ContentPlaceHolder1$Logincontrol1$txtPassword: this.password,
-                            ctl00$ContentPlaceHolder1$Logincontrol1$LoginBtn: 'Login',
-                        } });
-                    // Now Let's login by Posting the data
-                    request.post(this.URL + this.LOGIN_URL + '?ReturnURl=%2f', requestOpts, (err, httpResponse, body) => {
-                        if (err) {
-                            console.error('login failed:', err);
-                            return;
-                        }
-                        // Hack to check for login. Should forward to dashboard.
-                        if (httpResponse.headers.location) { // && httpResponse.headers.location == '/FixedPages/Dashboard.aspx') {
-                            console.log('SUCCESSFULLY LOGGED IN');
-                            callback.bind(this)();
-                        }
-                        else {
-                            console.log('Login Failed, no redirect to Dashboard');
-                        }
-                    });
+            // Let's first fetch the VIEWSTATE & VIEWSTATEGENERATOR hidden parameter values
+            request
+                .get(this.URL + this.LOGIN_URL, this.defaultRequestOps)
+                .then((response) => {
+                this.log.debug('Cookie Value: ' + this.jar.getCookieString(this.URL));
+                // Filter out both values for the VIEWSTATE & VIEWSTATEGENERATOR hidden parameter
+                this.viewState = response.body.match(/<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="(.*)" \/>/)[1];
+                this.viewStateGenerator = response.body.match(/<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="(.*)" \/>/)[1];
+                this.log.debug('Fetched VIEWSTATE value: ' + this.viewState);
+                this.log.debug('Fetched VIEWSTATEGENERATOR value: ' + this.viewStateGenerator);
+                const requestOpts = Object.assign(Object.assign({}, this.defaultRequestOps), { headers: {
+                        // We need to simulate a Browser which the SunnyPortal accepts...here I am Using Firefox 71.0 (64-bit) for Windows
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:71.0) Gecko/20100101 Firefox/71.0',
+                    }, form: {
+                        __VIEWSTATE: this.viewState,
+                        __VIEWSTATEGENERATOR: this.viewStateGenerator,
+                        ctl00$ContentPlaceHolder1$Logincontrol1$txtUserName: this.email,
+                        ctl00$ContentPlaceHolder1$Logincontrol1$txtPassword: this.password,
+                        ctl00$ContentPlaceHolder1$Logincontrol1$LoginBtn: 'Login',
+                    } });
+                // Now let's login by Posting the data
+                request
+                    .post(this.URL + this.LOGIN_URL + '?ReturnURl=%2f', requestOpts)
+                    .then((response) => {
+                    // Hack to check for login. Should forward to dashboard.
+                    if (response.headers.location && response.headers.location == '/FixedPages/HoManLive.aspx') {
+                        this.log.info('SUCCESSFULLY LOGGED IN');
+                        callback.bind(this)();
+                    }
+                    else {
+                        this.log.warn('Login Failed, no redirect to HoManLive page');
+                        this.reset.bind(this)();
+                    }
+                })
+                    .catch((err) => {
+                    this.log.error(err);
+                    this.reset.bind(this)();
                 });
-            }
-            catch (error) {
-                this.log.error('login failed, retrying in 5 sec: ' + error);
-                setTimeout(this.login.bind(this), 5 * 1000);
-            }
+            })
+                .catch((err) => {
+                this.log.error(err);
+                this.reset.bind(this)();
+            });
         });
     }
-    fetchData() {
-        console.log('Fetching data...');
+    fetchLiveData() {
         const d = new Date();
         const n = d.getTime();
         const wantedData = [
@@ -128,14 +128,18 @@ class Sunnyportal extends utils.Adapter {
             'BatteryOut',
             'BatteryChargeStatus',
         ];
-        request.get(this.URL + this.CURRENT_PRODUCTION_URL + '?_=' + n, this.defaultRequestOps, (err, httpResponse, body) => {
-            if (err) {
-                console.error('Could not get current production');
+        request
+            .get(this.URL + this.CURRENT_PRODUCTION_URL + '?_=' + n, this.defaultRequestOps)
+            .then((response) => {
+            if (response.err) {
+                this.log.error('Could not get current production');
+                this.reset.bind(this)();
+                return;
             }
-            console.log(JSON.parse(body));
+            this.log.debug(JSON.parse(response.body));
             let obj;
             try {
-                obj = JSON.parse(body);
+                obj = JSON.parse(response.body);
             }
             catch (error) {
                 this.log.error('error in JSON!');
@@ -150,8 +154,13 @@ class Sunnyportal extends utils.Adapter {
             }
             this.setAttribute('Timestamp', obj['Timestamp']['DateTime'], 'string');
             if (this.timer == null) {
-                this.timer = setInterval(this.fetchData.bind(this), 15 * 1000);
+                // Fetch data every minute
+                this.timer = setInterval(this.fetchLiveData.bind(this), 60 * 1000);
             }
+        })
+            .catch((err) => {
+            this.log.error(err);
+            this.reset.bind(this)();
         });
     }
     setAttribute(name, value, type = 'number') {
