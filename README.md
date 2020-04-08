@@ -22,6 +22,9 @@ Fetch the current data from Sunny Portal every minute.
 
 ## Changelog
 
+### 0.1.3
+* (Marvin Caspar) Fix version
+
 ### 0.1.2
 * (Marvin Caspar) Fixes for ioBroker repository
 

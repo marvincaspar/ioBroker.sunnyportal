@@ -1,8 +1,12 @@
 {
     "common": {
         "name": "sunnyportal",
-        "version": "0.1.2",
+        "version": "0.1.3",
         "news": {
+            "0.1.3": {
+                "en": "Fix version",
+                "de": "Version angepasst"
+            },
             "0.1.2": {
                 "en": "Fix for ioBroker repository",
                 "de": "Anpassungen für das ioBroker Repository"
