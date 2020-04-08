@@ -70,9 +70,9 @@ class Sunnyportal extends utils.Adapter {
     private onUnload(callback: () => void): void {
         try {
             this.log.info('Cleaned everything up...');
-            clearInterval(this.timer);
+            this.timer && clearInterval(this.timer);
             this.timer = null;
-            clearTimeout(this.loginTimer);
+            this.loginTimer && clearTimeout(this.loginTimer);
             this.loginTimer = null;
             callback.bind(this)();
         } catch (e) {
@@ -215,7 +215,10 @@ class Sunnyportal extends utils.Adapter {
             clearInterval(this.timer);
             this.timer = null;
         }
-        this.loginTimer = setTimeout(this.login.bind(this), 5 * 1000);
+        this.loginTimer = setTimeout(() => {
+            this.loginTimer = null;
+            this.login()
+        }, 5 * 1000);
     }
 }
 
