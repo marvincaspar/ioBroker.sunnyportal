@@ -80,7 +80,7 @@ class Sunnyportal extends utils.Adapter {
         }, ops.updateInterval);
     }
 
-    private fetchData(sunnyPortalService: SunnyPortalService) {
+    private fetchData(sunnyPortalService: SunnyPortalService): void {
         // const now = new Date();
         // const month = now.getMonth() + 1;
         // const day = now.getDate();
