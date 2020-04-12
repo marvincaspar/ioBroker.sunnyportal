@@ -46,7 +46,7 @@ class Sunnyportal extends utils.Adapter {
         // Initialize your adapter here
         const ops = new Options(
             this.log,
-            300 * 1000, // every 5 minutes
+            60 * 1000, // every 1 minutes
             this.URL,
             this.config.sunnyPortalEmail,
             this.config.sunnyPortalPassword,
@@ -111,10 +111,6 @@ class Sunnyportal extends utils.Adapter {
     }
 
     private processLiveData(responseData: any): void {
-        if (!responseData) {
-            return;
-        }
-
         const wantedData = [
             { name: 'PV', unit: 'W' },
             { name: 'FeedIn', unit: 'W' },
