@@ -1,8 +1,12 @@
 {
     "common": {
         "name": "sunnyportal",
-        "version": "0.1.4",
+        "version": "0.1.5",
         "news": {
+            "0.1.5": {
+                "en": "Reduce update interval to 60 seconds",
+                "de": "Aktualisierungen alle 60 Sekunden"
+            },
             "0.1.4": {
                 "en": "Rewrite code to fix login issue, add units to values to ioBroker state values",
                 "de": "Code neu geschrieben um Login Problem zu beheben, anzeigen von Einheiten bei den ioBroker Werten"

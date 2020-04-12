@@ -24,6 +24,9 @@ Fetch the current data from Sunny Portal every minute.
 
 ## Changelog
 
+### 0.1.5
+* (Marvin Caspar) Reduce update interval to 60 seconds
+
 ### 0.1.4
 * (Marvin Caspar) Rewrite code to fix login issue
 * (Marvin Caspar) Add units to ioBroker states
