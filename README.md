@@ -1,6 +1,9 @@
 ![Logo](admin/sunnyportal.png)
 # ioBroker.sunnyportal
 
+![Test and Release](https://github.com/marvincaspar/ioBroker.sunnyportal/workflows/Test%20and%20Release/badge.svg)
+
+[![Build Status](https://travis-ci.org/marvincaspar/ioBroker.sunnyportal.svg?branch=master)](https://travis-ci.org/marvincaspar/ioBroker.sunnyportal)
 [![NPM version](http://img.shields.io/npm/v/iobroker.sunnyportal.svg)](https://www.npmjs.com/package/iobroker.sunnyportal)
 [![Downloads](https://img.shields.io/npm/dm/iobroker.sunnyportal.svg)](https://www.npmjs.com/package/iobroker.sunnyportal)
 ![Number of Installations (latest)](http://iobroker.live/badges/sunnyportal-installed.svg)
