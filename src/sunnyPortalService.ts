@@ -29,6 +29,7 @@ export class SunnyPortalService {
         this.login((err: any, jar: request.CookieJar) => {
             if (err) {
                 callback(err);
+                return;
             }
 
             const requestOpts = {

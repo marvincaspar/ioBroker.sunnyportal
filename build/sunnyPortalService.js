@@ -21,6 +21,7 @@ class SunnyPortalService {
         this.login((err, jar) => {
             if (err) {
                 callback(err);
+                return;
             }
             const requestOpts = {
                 method: 'GET',

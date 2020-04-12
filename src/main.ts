@@ -102,11 +102,19 @@ class Sunnyportal extends utils.Adapter {
         // });
 
         sunnyPortalService.currentProduction((err, data) => {
+            if (err) {
+                this.log.error(err);
+                return;
+            }
             this.processLiveData(data);
         });
     }
 
     private processLiveData(responseData: any): void {
+        if (!responseData) {
+            return;
+        }
+
         const wantedData = [
             { name: 'PV', unit: 'W' },
             { name: 'FeedIn', unit: 'W' },
