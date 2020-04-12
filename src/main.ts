@@ -5,7 +5,9 @@
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
 import * as utils from '@iobroker/adapter-core';
-import * as request from 'request-promise-native';
+import { Options } from './options';
+import { SunnyPortalService } from './sunnyPortalService';
+import { setInterval } from 'timers';
 
 // Augment the adapter.config object with the actual types
 // TODO: delete this in the next version
@@ -22,27 +24,11 @@ declare global {
 
 class Sunnyportal extends utils.Adapter {
     readonly URL = 'https://sunnyportal.com';
-    readonly LOGIN_URL = '/Templates/Start.aspx';
-    readonly OPEN_INVERTER_URL = '/FixedPages/InverterSelection.aspx';
-    readonly SET_FILE_DATE_URL = '/FixedPages/InverterSelection.aspx';
-    readonly CURRENT_PRODUCTION_URL = '/Dashboard';
-    readonly DOWNLOAD_RESULTS_URL = '/Templates/DownloadDiagram.aspx?down=diag';
 
-    private email = '';
-    private password = '';
-    private plantOID = '';
-    private viewState = '';
-    private viewStateGenerator = '';
-
-    private timer: any = null;
-    private loginTimer: any = null;
-
-    private jar = request.jar();
-    private defaultRequestOps = {
-        jar: this.jar,
-        resolveWithFullResponse: true,
-        simple: false,
-    };
+    private liveDataInterval: any = null;
+    private dailyDataInterval: any = null;
+    private monthlyDataInterval: any = null;
+    private yearlyDataInterval: any = null;
 
     public constructor(options: Partial<ioBroker.AdapterOptions> = {}) {
         super({
@@ -58,10 +44,15 @@ class Sunnyportal extends utils.Adapter {
      */
     private async onReady(): Promise<void> {
         // Initialize your adapter here
-        this.email = this.config.sunnyPortalEmail;
-        this.password = this.config.sunnyPortalPassword;
+        const ops = new Options(
+            this.log,
+            300 * 1000, // every 5 minutes
+            this.URL,
+            this.config.sunnyPortalEmail,
+            this.config.sunnyPortalPassword,
+        );
 
-        await this.login(this.fetchLiveData);
+        this.startup(ops);
     }
 
     /**
@@ -70,132 +61,90 @@ class Sunnyportal extends utils.Adapter {
     private onUnload(callback: () => void): void {
         try {
             this.log.info('Cleaned everything up...');
-            clearInterval(this.timer);
-            this.timer = null;
-            clearTimeout(this.loginTimer);
-            this.loginTimer = null;
+            this.liveDataInterval && clearInterval(this.liveDataInterval);
+            this.dailyDataInterval && clearInterval(this.dailyDataInterval);
+            this.monthlyDataInterval && clearInterval(this.monthlyDataInterval);
+            this.yearlyDataInterval && clearInterval(this.yearlyDataInterval);
             callback.bind(this)();
         } catch (e) {
             callback.bind(this)();
         }
     }
 
-    private async login(callback: () => void): Promise<void> {
-        // Let's first fetch the VIEWSTATE & VIEWSTATEGENERATOR hidden parameter values
-        request
-            .get(this.URL + this.LOGIN_URL, this.defaultRequestOps)
-            .then((response) => {
-                this.log.debug('Cookie Value: ' + this.jar.getCookieString(this.URL));
-                // Filter out both values for the VIEWSTATE & VIEWSTATEGENERATOR hidden parameter
-                this.viewState = response.body.match(
-                    /<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="(.*)" \/>/,
-                )[1];
-                this.viewStateGenerator = response.body.match(
-                    /<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="(.*)" \/>/,
-                )[1];
-                this.log.debug('Fetched VIEWSTATE value: ' + this.viewState);
-                this.log.debug('Fetched VIEWSTATEGENERATOR value: ' + this.viewStateGenerator);
+    private startup(ops: Options): void {
+        const sunnyPortalService = new SunnyPortalService(ops);
 
-                const requestOpts = {
-                    ...this.defaultRequestOps,
-                    headers: {
-                        // We need to simulate a Browser which the SunnyPortal accepts...here I am Using Firefox 71.0 (64-bit) for Windows
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:71.0) Gecko/20100101 Firefox/71.0',
-                    },
-                    form: {
-                        __VIEWSTATE: this.viewState,
-                        __VIEWSTATEGENERATOR: this.viewStateGenerator,
-                        ctl00$ContentPlaceHolder1$Logincontrol1$txtUserName: this.email,
-                        ctl00$ContentPlaceHolder1$Logincontrol1$txtPassword: this.password,
-                        ctl00$ContentPlaceHolder1$Logincontrol1$LoginBtn: 'Login',
-                    },
-                };
-
-                // Now let's login by Posting the data
-                request
-                    .post(this.URL + this.LOGIN_URL + '?ReturnURl=%2f', requestOpts)
-                    .then((response) => {
-                        // Hack to check for login. Should forward to next page.
-                        if (
-                            response.headers.location &&
-                            (response.headers.location == '/FixedPages/HoManLive.aspx' ||
-                                response.headers.location == '/FixedPages/Dashboard.aspx')
-                        ) {
-                            this.log.info('Successfully logged in');
-                            callback.bind(this)();
-                        } else {
-                            this.log.warn('Login Failed, no redirect!');
-                            this.reset.bind(this)();
-                        }
-                    })
-                    .catch((err) => {
-                        this.log.error(err);
-                        this.reset.bind(this)();
-                    });
-            })
-            .catch((err) => {
-                this.log.error(err);
-                this.reset.bind(this)();
-            });
+        this.fetchData(sunnyPortalService);
+        this.liveDataInterval = setInterval(() => {
+            this.fetchData(sunnyPortalService);
+        }, ops.updateInterval);
     }
 
-    private fetchLiveData(): void {
-        const d = new Date();
-        const n = d.getTime();
+    private fetchData(sunnyPortalService: SunnyPortalService) {
+        // const now = new Date();
+        // const month = now.getMonth() + 1;
+        // const day = now.getDate();
+        // const year = now.getFullYear();
+        //
+        // sunnyPortalService.historicalProduction(DateType.DAY, year, month, day, (err, data) => {
+        //     this.log.info('Daily data');
+        //     this.log.info(data);
+        // });
+        //
+        // sunnyPortalService.historicalProduction(DateType.MONTH, year, month, day, (err, data) => {
+        //     this.log.info('Monthly data');
+        //     this.log.info(data);
+        // });
+        //
+        // sunnyPortalService.historicalProduction(DateType.YEAR, year, month, day, (err, data) => {
+        //     this.log.info('Yearly data');
+        //     this.log.info(data);
+        // });
 
+        sunnyPortalService.currentProduction((err, data) => {
+            this.processLiveData(data);
+        });
+    }
+
+    private processLiveData(responseData: any): void {
         const wantedData = [
-            'PV',
-            'FeedIn',
-            'GridConsumption',
-            'DirectConsumption',
-            'SelfConsumption',
-            'SelfSupply',
-            'TotalConsumption',
-            'DirectConsumptionQuote',
-            'SelfConsumptionQuote',
-            'AutarkyQuote',
-            'BatteryIn',
-            'BatteryOut',
-            'BatteryChargeStatus',
+            { name: 'PV', unit: 'W' },
+            { name: 'FeedIn', unit: 'W' },
+            { name: 'GridConsumption', unit: 'W' },
+            { name: 'DirectConsumption', unit: 'W' },
+            { name: 'SelfConsumption', unit: 'W' },
+            { name: 'SelfSupply', unit: 'W' },
+            { name: 'TotalConsumption', unit: 'W' },
+            { name: 'DirectConsumptionQuote', unit: '%' },
+            { name: 'SelfConsumptionQuote', unit: '%' },
+            { name: 'AutarkyQuote', unit: '%' },
+            { name: 'BatteryIn', unit: 'W' },
+            { name: 'BatteryOut', unit: 'W' },
+            { name: 'BatteryChargeStatus', unit: '%' },
         ];
-        request
-            .get(this.URL + this.CURRENT_PRODUCTION_URL + '?_=' + n, this.defaultRequestOps)
-            .then((response) => {
-                if (response.err) {
-                    this.log.error('Could not get current production');
-                    this.reset.bind(this)();
-                    return;
-                }
-                this.log.debug(JSON.parse(response.body));
-                let obj;
-                try {
-                    obj = JSON.parse(response.body);
-                } catch (error) {
-                    this.log.error('Error in JSON!');
-                    this.reset.bind(this)();
-                    return;
-                }
-
-                for (const key of Object.keys(obj)) {
-                    const data = obj[key];
-                    if (wantedData.includes(key)) {
-                        this.setAttribute(key, data);
-                    }
-                }
-                this.setAttribute('Timestamp', obj['Timestamp']['DateTime'], 'string');
-                if (this.timer == null) {
-                    // Fetch data every minute
-                    this.timer = setInterval(this.fetchLiveData.bind(this), 60 * 1000);
-                }
-            })
-            .catch((err) => {
-                this.log.error(err);
-                this.reset.bind(this)();
-            });
+        for (const key of Object.keys(responseData)) {
+            const data = responseData[key];
+            const wanted = wantedData.filter((wanted) => wanted.name == key);
+            if (wanted.length === 1 && data) {
+                this.setAttribute(wanted[0].name, data, wanted[0].unit, 'current');
+            }
+        }
+        if (responseData['Timestamp']) {
+            this.setAttribute('Timestamp', responseData['Timestamp']['DateTime'], '', 'current', 'string');
+        }
     }
 
-    private async setAttribute(name: string, value: any, type = 'number'): Promise<void> {
-        await this.setObjectNotExistsAsync(name, {
+    private async setAttribute(
+        name: string,
+        value: any,
+        unit: string,
+        folderName = '',
+        type = 'number',
+    ): Promise<void> {
+        let nameWithPrefix = name;
+        if (folderName) nameWithPrefix = folderName + '.' + name;
+
+        await this.setObjectNotExistsAsync(nameWithPrefix, {
             type: 'state',
             common: {
                 name: name,
@@ -203,19 +152,12 @@ class Sunnyportal extends utils.Adapter {
                 role: 'value',
                 read: true,
                 write: false,
+                unit: unit,
             },
             native: {},
         });
 
-        await this.setStateAsync(name, { val: value, ack: true });
-    }
-
-    private reset(): void {
-        if (this.timer != null) {
-            clearInterval(this.timer);
-            this.timer = null;
-        }
-        this.loginTimer = setTimeout(this.login.bind(this), 5 * 1000);
+        await this.setStateAsync(nameWithPrefix, { val: value, ack: true });
     }
 }
 

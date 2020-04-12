@@ -7,7 +7,6 @@
 ![Number of Installations (stable)](http://iobroker.live/badges/sunnyportal-stable.svg)
 [![Dependency Status](https://img.shields.io/david/marvincaspar/iobroker.sunnyportal.svg)](https://david-dm.org/marvincaspar/iobroker.sunnyportal)
 [![Known Vulnerabilities](https://snyk.io/test/github/marvincaspar/ioBroker.sunnyportal/badge.svg)](https://snyk.io/test/github/marvincaspar/ioBroker.sunnyportal)
-
 [![NPM](https://nodei.co/npm/iobroker.sunnyportal.png?downloads=true)](https://nodei.co/npm/iobroker.sunnyportal/)
 
 ## Sunny Portal adapter for ioBroker
@@ -21,6 +20,10 @@ Fetch the current data from Sunny Portal every minute.
 ![Object overview](./docs/images/object-overview.png)
 
 ## Changelog
+
+### 0.1.4
+* (Marvin Caspar) Rewrite code to fix login issue
+* (Marvin Caspar) Add units to ioBroker states
 
 ### 0.1.3
 * (Marvin Caspar) Fix version
@@ -37,6 +40,10 @@ Fetch the current data from Sunny Portal every minute.
 
 ### 0.0.1
 * (Marvin Caspar) initial release
+
+## Credits
+I based the code on mkorthuis's [sunnyportal-api](https://github.com/mkorthuis/sunnyportal-api/)
+
 
 ## License
 MIT License
